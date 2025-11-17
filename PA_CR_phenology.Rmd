@@ -1,7 +1,7 @@
 ---
 title: "Fitting the path-analysis capture-recapture model for denning phenology in polar bears"
-author: "Marwan Naciri"
-date: "2025-10-03"
+author: ""
+date: "2025-11-16"
 output: pdf_document
 ---
 

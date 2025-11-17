@@ -1,4 +1,4 @@
-This repository contains the data and code to reproduce the analyses and figures presented in 'Denning phenology mediates sea-ice loss impacts on early reproductive success in polar bears'.
+This repository contains the data and code to reproduce the analyses and plot the figures presented in 'Denning phenology mediates sea-ice loss impacts on early reproductive success in polar bears'.
 
 - PA_CR_phenology.Rmd is used to build and run the Bayesian path-analysis capture-recapture model presented in the main text.
 

@@ -180,7 +180,6 @@ caterpillar_plot <- ggplot(data = caterpillar,
         plot.background = element_blank(),
         legend.position = "none") +
   labs(x = "", y = "") 
-  # scale_y_continuous(breaks = c(-0.15, -0.1, -0.05, 0)) +
 
 inset <- inset_element(
   caterpillar_plot,
@@ -288,7 +287,7 @@ ggsave(plot_sea_ice, filename = "02_outputs/Figure 3.png",
   
 
 
-# Fig. 4: departure VS sea-ice --------------------------------------------
+# Fig. 4: emergence VS sea-ice --------------------------------------------
 
 # Sea ice data
 sea_ice_data <- read_csv("01_inputs/sea_ice_metrics.csv", show_col_types = F) 
@@ -313,8 +312,10 @@ sd_date_out <- sd(denning_dates$doy_out, na.rm = T)
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
 load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples, 
-             fit_PA_CR_phenology_2$samples)
+# res <- rbind(fit_PA_CR_phenology_1$samples,
+#              fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1, 
+             fit_PA_CR_phenology_2)
 
 lengthgrid <- 100
 grid <- seq(min(sea_ice), max(sea_ice), length = lengthgrid) 
@@ -431,7 +432,7 @@ ggsave("02_outputs/Figure 4.png",
 
 
 
-# Fig. 5: early repr success VS departure --------------------------------------
+# Fig. 5: early repr success VS emergence --------------------------------------
 
 denning_dates <- read_csv("01_inputs/denning_dates.csv", show_col_types = F)
 
@@ -439,9 +440,12 @@ mean_date_out <- mean(denning_dates$doy_out, na.rm = T)
 sd_date_out <- sd(denning_dates$doy_out, na.rm = T)
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
-load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples, 
-             fit_PA_CR_phenology_2$samples)
+# load("02_outputs/fit_PA_CR_phenology_2.RData")
+# res <- rbind(fit_PA_CR_phenology_1$samples, 
+#              fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1, 
+             fit_PA_CR_phenology_2)
+
 
 lengthgrid <- 100
 grid <- seq(min(denning_dates$doy_out, na.rm = T),
@@ -669,8 +673,11 @@ sea_ice_s <- as.vector(scale(sea_ice))
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
 load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples, 
-             fit_PA_CR_phenology_2$samples)
+# res <- rbind(fit_PA_CR_phenology_1$samples, 
+#              fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1, 
+             fit_PA_CR_phenology_2)
+
 
 lengthgrid <- 100
 grid <- seq(min(sea_ice), max(sea_ice), length = lengthgrid) 
@@ -678,7 +685,7 @@ grid_scaled <- seq(min(sea_ice_s), max(sea_ice_s), length = lengthgrid)
 
 
 
-# ~~~ a. Indirect effect -------------------------------------------------------
+# ~ a. Indirect effect -------------------------------------------------------
 
 
 # Early litter survival ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -900,7 +907,7 @@ inset <- inset_element(
 plot_twinning_indirect <- plot_twinning + inset
 
 
-# ~~~ b. All effects -------------------------------------------------------
+# ~ b. All effects -------------------------------------------------------
 
 # Early litter survival ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 den_in <- den_out <- early_litter_survival <- twinning <- 

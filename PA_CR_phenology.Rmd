@@ -37,6 +37,7 @@ for (k in 1:length(nbr_captures)) {
 data_CR_events <- data_CR_events %>% 
   filter(!ID_NR %in% to_remove)
 
+
 n_states <- 14
 n_events <- 19
 physical_capture <- c(1:11, 16:18)
@@ -112,6 +113,7 @@ for (i in 1:dim(CH)[1]) {
   }
 }
 n_recaptured <- length(index_recaptured_i)
+
 
 
 # Compute probability of having parted from 2_yr-old cubs ++++++++++++++++++++++
@@ -242,8 +244,6 @@ DATE_IN <- DATE_IN_LOWER <- DATE_IN_UPPER <- DATE_OUT <- DATE_OUT_LOWER <- DATE_
   matrix(data = NA, nrow = nrow(CH), ncol = ncol(CH),
          dimnames = list(rownames(CH), min(data_CR_events$year):max(data_CR_events$year)))
 
-index_denning_remote_i <- index_denning_remote_t <- NULL
-
 for (i in 1:nrow(CH)) {
   if (f[i] == l[i]) next
   for (t in (f[i]+1):l[i]) {
@@ -261,9 +261,6 @@ for (i in 1:nrow(CH)) {
       DATE_OUT_UPPER[i, t-1] <- min(denning_dates$doy_out_upper[k], 
                                     denning_dates$doy_capture[k], 365 + yday("2021-05-15"), na.rm = T)
       
-      index_denning_remote_i <- c(index_denning_remote_i, i)
-      index_denning_remote_t <- c(index_denning_remote_t, t)
-      
     } else {  # If no info on phenology
       DATE_IN_LOWER[i, t-1] <- yday("2021-08-01")
       DATE_IN_UPPER[i, t-1] <- 365 + yday("2021-01-20")
@@ -273,8 +270,6 @@ for (i in 1:nrow(CH)) {
     }
   }
 }
-
-n_denning_remote <- length(index_denning_remote_i)
 
 mean_date_in <- mean(DATE_IN, na.rm = T) 
 sd_date_in <- sd(DATE_IN, na.rm = T) 
@@ -617,7 +612,7 @@ which(check_duration %in% c(0))
 
 
 
-## 3. Scale date
+## 3. Z-scale dates
 
 ```{r, echo = T}
 # Den entry
@@ -652,22 +647,23 @@ CONSTRAINED_DATA <- matrix(data = 1, nrow = nrow(CH), ncol = ncol(CH))
 CENSORED_IN <- matrix(data = 1, nrow = nrow(CH), ncol = ncol(CH))
 CENSORED_OUT <-  matrix(data = 1, nrow = nrow(CH), ncol = ncol(CH))
 
+
 CONSTRAINED_DOY <- matrix(data = 1, nrow = nrow(CH), ncol = ncol(CH))
 
 dat <- list(ones = rep(1, times = nrow(CH)), 
             DATE_IN = DATE_IN,
             DATE_OUT = DATE_OUT,
-            CENSORED_IN = CENSORED_IN,            # Censoring of the date of den entry
-            CENSORED_OUT = CENSORED_OUT,          # Censoring of the date of den emergence
-            CONSTRAINED_DATA = CONSTRAINED_DATA,  # Censoring for date of emergence >= date of entry + 60
+            CENSORED_IN = CENSORED_IN,
+            CENSORED_OUT = CENSORED_OUT,
+            CONSTRAINED_DATA = CONSTRAINED_DATA,
             DOY = DOY,
-            CONSTRAINED_DOY = CONSTRAINED_DOY,    # Constraint for date of emergence < date of capture
-            constraint_s0 = rep(1, times = 3))    # Constraint for cub-of-year-survival < yearling survival
+            CONSTRAINED_DOY = CONSTRAINED_DOY,
+            constraint_s0 = rep(1, times = 3))
 
 my.constants <- list(CH = CH,
                      freq = rep(1, times = nrow(CH)),
-                     f = f,
-                     l = l,
+                     first = f,
+                     last = l,
                      n_ind = nrow(CH),
                      n_occasions = ncol(CH),
                      n_states = n_states,
@@ -705,28 +701,32 @@ my.constants <- list(CH = CH,
                      index_recaptured_i = index_recaptured_i,
                      index_recaptured_t = index_recaptured_t)
 
-inits <- function() list(beta_phi = c(2, 3.18, 1.6, -0.3, 0) + rnorm(n = 5, mean = 0, sd = 0.25),
+
+inits <- function() list(h = c(2, 3.18, 1.6, -0.3, 0) + rnorm(n = 5, mean = 0, sd = 0.25),
                          
-                         beta_s0  = c(-0.40, 0.20, -0.40, 0, 0, 0) + rnorm(n = 6, mean = 0, sd = 0.25), 
-                         beta_s1  = c(0.8, 1.4 , 2.2, 0) + rnorm(n = 4, mean = 0, sd = 0.25), 
+                         f  = c(-0.40, 0.20, -0.40, 0, 0, 0) + rnorm(n = 6, mean = 0, sd = 0.25), 
+                         g  = c(0.8, 1.4 , 2.2, 0) + rnorm(n = 4, mean = 0, sd = 0.25), 
                          
-                         beta_eta  = rnorm(n = 9, mean = 0, sd = 0.25),
+                         e  = rnorm(n = 9, mean = 0, sd = 0.25),
                          
-                         beta_beta = rnorm(n = 6, mean = 0, sd = 0.25),
-                         beta_gamma = rnorm(n = 7, mean = 0, sd = 0.25),
+                         a = rnorm(n = 6, mean = 0, sd = 0.25),
+                         b = rnorm(n = 7, mean = 0, sd = 0.25),
                          
                          beta_p = c(-1.2, -2.5, -2.2, -0.2) + rnorm(n = 4, mean = 0, sd = 0.1),
                          omega = rnorm(ncol(CH)-1, mean = 0, sd = 1),
                          sigma_omega = runif(1, min = 0, max = 5),
                          
-                         tau = rnorm(n = 3, mean = 0, sd = 1),
-                         sigma_date_in = runif(1, min = 0.5, max = 1),
-                         kappa = rnorm(n = 4, mean = 0, sd = 1),
-                         sigma_date_out = runif(1, min = 0.5, max = 1),
+                         # z = z_inits,
+                         c = rnorm(n = 3, mean = 0, sd = 1),
+                         sigma_rho = runif(1, min = 0, max = 1),
+                         sigma_day_in = runif(1, min = 0.5, max = 1),
+                         d = rnorm(n = 4, mean = 0, sd = 1),
+                         sigma_psi = runif(1, min = 0, max = 1),
+                         sigma_day_out = runif(1, min = 0.5, max = 1),
                          DATE_IN = date_in_inits,
                          DATE_OUT = date_out_inits,
                          
-                         beta_doy = c(0, 0.2) + rnorm(n = 2, mean = 0, sd = 0.25),
+                         j = c(0, 0.2) + rnorm(n = 2, mean = 0, sd = 0.25),
                          sigma_doy = runif(1, min = 0.5, max = 1),
                          nu = rnorm(ncol(CH)-1, mean = 0, sd = 1),
                          sigma_nu = runif(1, min = 0, max = 5))
@@ -735,13 +735,14 @@ inits <- function() list(beta_phi = c(2, 3.18, 1.6, -0.3, 0) + rnorm(n = 5, mean
 inits_values <- list(inits(), inits())
 
 # Parameters monitored 
-params <- c("beta_phi", 
-            "beta_s0", "beta_s1",
-            "beta_eta", 
-            "beta_beta", "beta_gamma", 
+params <- c("h", 
+            "f", "g",
+            "e", 
+            "a", "b", 
             "beta_p",  "omega", "sigma_omega",
-            "tau", "sigma_date_in", "kappa", "sigma_date_out",
-            "beta_doy", "sigma_doy", "nu", "sigma_nu")
+            "c", "rho", "sigma_rho",  "sigma_day_in", 
+            "d", "psi", "sigma_psi",  "sigma_day_out",
+            "j", "sigma_doy", "nu", "sigma_nu")
 ```
 
 
@@ -818,7 +819,7 @@ PA_CR_phenology <- nimbleCode({
     E0[4, 1, i] <- 0
     E0[4, 2, i] <- 0
     E0[4, 3, i] <- 0
-    E0[4, 4, i] <- ( 1-KHI[i, f[i]] ) * P0[i]
+    E0[4, 4, i] <- ( 1-KHI[i, first[i]] ) * P0[i]
     E0[4, 5, i] <- 0
     E0[4, 6, i] <- 0
     E0[4, 7, i] <- 0
@@ -826,7 +827,7 @@ PA_CR_phenology <- nimbleCode({
     E0[4, 9, i] <- 0
     E0[4, 10, i] <- 0
     E0[4, 11, i] <- 0
-    E0[4, 12, i] <- KHI[i, f[i]]
+    E0[4, 12, i] <- KHI[i, first[i]]
     E0[4, 13, i] <- 0
     E0[4, 14, i] <- 0
     E0[4, 15, i] <- 0
@@ -838,7 +839,7 @@ PA_CR_phenology <- nimbleCode({
     E0[5, 1, i] <- 0
     E0[5, 2, i] <- 0
     E0[5, 3, i] <- 0
-    E0[5, 4, i] <- ( 1-KHI[i, f[i]] ) * P0[i]
+    E0[5, 4, i] <- ( 1-KHI[i, first[i]] ) * P0[i]
     E0[5, 5, i] <- 0
     E0[5, 6, i] <- 0
     E0[5, 7, i] <- 0
@@ -847,10 +848,10 @@ PA_CR_phenology <- nimbleCode({
     E0[5, 10, i] <- 0
     E0[5, 11, i] <- 0
     E0[5, 12, i] <- 0
-    E0[5, 13, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[5, 13, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[5, 14, i] <- 0
     E0[5, 15, i] <- 0
-    E0[5, 16, i] <- KHI[i, f[i]] * P0[i]
+    E0[5, 16, i] <- KHI[i, first[i]] * P0[i]
     E0[5, 17, i] <- 0
     E0[5, 18, i] <- 0
     E0[5, 19, i] <- 0
@@ -867,9 +868,9 @@ PA_CR_phenology <- nimbleCode({
     E0[6, 10, i] <- 0
     E0[6, 11, i] <- 0
     E0[6, 12, i] <- 0
-    E0[6, 13, i] <- KHI[i, f[i]] * ( 1-P0[i] ) * AGE_5[i, f[i]]
+    E0[6, 13, i] <- KHI[i, first[i]] * ( 1-P0[i] ) * AGE_5[i, first[i]]
     E0[6, 14, i] <- 0
-    E0[6, 15, i] <- KHI[i, f[i]] * ( 1-P0[i] ) * ( 1-AGE_5[i, f[i]] )
+    E0[6, 15, i] <- KHI[i, first[i]] * ( 1-P0[i] ) * ( 1-AGE_5[i, first[i]] )
     E0[6, 16, i] <- 0
     E0[6, 17, i] <- 0
     E0[6, 18, i] <- 0
@@ -887,9 +888,9 @@ PA_CR_phenology <- nimbleCode({
     E0[7, 10, i] <- 0
     E0[7, 11, i] <- 0
     E0[7, 12, i] <- 0
-    E0[7, 13, i] <- KHI[i, f[i]] * ( 1-P0[i] ) * AGE_5[i, f[i]]
+    E0[7, 13, i] <- KHI[i, first[i]] * ( 1-P0[i] ) * AGE_5[i, first[i]]
     E0[7, 14, i] <- 0
-    E0[7, 15, i] <- KHI[i, f[i]] * ( 1-P0[i] ) * ( 1-AGE_5[i, f[i]] )
+    E0[7, 15, i] <- KHI[i, first[i]] * ( 1-P0[i] ) * ( 1-AGE_5[i, first[i]] )
     E0[7, 16, i] <- 0
     E0[7, 17, i] <- 0
     E0[7, 18, i] <- 0
@@ -908,7 +909,7 @@ PA_CR_phenology <- nimbleCode({
     E0[8, 11, i] <- 0
     E0[8, 12, i] <- 0
     E0[8, 13, i] <- 0
-    E0[8, 14, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[8, 14, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[8, 15, i] <- 0
     E0[8, 16, i] <- 0
     E0[8, 17, i] <- 0
@@ -928,7 +929,7 @@ PA_CR_phenology <- nimbleCode({
     E0[9, 11, i] <- 0
     E0[9, 12, i] <- 0
     E0[9, 13, i] <- 0
-    E0[9, 14, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[9, 14, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[9, 15, i] <- 0
     E0[9, 16, i] <- 0
     E0[9, 17, i] <- 0
@@ -943,15 +944,15 @@ PA_CR_phenology <- nimbleCode({
     E0[10, 6, i] <- 0
     E0[10, 7, i] <- 0
     E0[10, 8, i] <- 0
-    E0[10, 9, i] <- ( 1-ALPHA[i, f[i]] ) * P0[i]
+    E0[10, 9, i] <- ( 1-ALPHA[i, first[i]] ) * P0[i]
     E0[10, 10, i] <- 0
-    E0[10, 11, i] <- ALPHA[i, f[i]] * ( 1-KHI[i, f[i]] ) * P0[i]
+    E0[10, 11, i] <- ALPHA[i, first[i]] * ( 1-KHI[i, first[i]] ) * P0[i]
     E0[10, 12, i] <- 0
     E0[10, 13, i] <- 0
-    E0[10, 14, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[10, 14, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[10, 15, i] <- 0
     E0[10, 16, i] <- 0
-    E0[10, 17, i] <- ALPHA[i, f[i]] * KHI[i, f[i]] * P0[i]
+    E0[10, 17, i] <- ALPHA[i, first[i]] * KHI[i, first[i]] * P0[i]
     E0[10, 18, i] <- 0
     E0[10, 19, i] <- 0
     
@@ -963,15 +964,15 @@ PA_CR_phenology <- nimbleCode({
     E0[11, 6, i] <- 0
     E0[11, 7, i] <- 0
     E0[11, 8, i] <- 0
-    E0[11, 9, i] <- 2 * ( 1-ALPHA[i, f[i]] ) * ALPHA[i, f[i]] * P0[i]
-    E0[11, 10, i] <- ( 1-ALPHA[i, f[i]] )^2 * P0[i]
-    E0[11, 11, i] <- ALPHA[i, f[i]]^2 * (1-KHI[i, f[i]]) * P0[i] 
+    E0[11, 9, i] <- 2 * ( 1-ALPHA[i, first[i]] ) * ALPHA[i, first[i]] * P0[i]
+    E0[11, 10, i] <- ( 1-ALPHA[i, first[i]] )^2 * P0[i]
+    E0[11, 11, i] <- ALPHA[i, first[i]]^2 * (1-KHI[i, first[i]]) * P0[i] 
     E0[11, 12, i] <- 0
     E0[11, 13, i] <- 0
-    E0[11, 14, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[11, 14, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[11, 15, i] <- 0
     E0[11, 16, i] <- 0
-    E0[11, 17, i] <- ALPHA[i, f[i]]^2 * KHI[i, f[i]] * P0[i] 
+    E0[11, 17, i] <- ALPHA[i, first[i]]^2 * KHI[i, first[i]] * P0[i] 
     E0[11, 18, i] <- 0
     E0[11, 19, i] <- 0
     
@@ -985,13 +986,13 @@ PA_CR_phenology <- nimbleCode({
     E0[12, 8, i] <- 0
     E0[12, 9, i] <- 0
     E0[12, 10, i] <- 0
-    E0[12, 11, i] <- 1-KHI[i, f[i]]
+    E0[12, 11, i] <- 1-KHI[i, first[i]]
     E0[12, 12, i] <- 0
     E0[12, 13, i] <- 0
-    E0[12, 14, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[12, 14, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[12, 15, i] <- 0
     E0[12, 16, i] <- 0
-    E0[12, 17, i] <- KHI[i, f[i]] * P0[i] 
+    E0[12, 17, i] <- KHI[i, first[i]] * P0[i] 
     E0[12, 18, i] <- 0
     E0[12, 19, i] <- 0
     
@@ -1005,14 +1006,14 @@ PA_CR_phenology <- nimbleCode({
     E0[13, 8, i] <- 0
     E0[13, 9, i] <- 0
     E0[13, 10, i] <- 0
-    E0[13, 11, i] <- 1-KHI[i, f[i]]
+    E0[13, 11, i] <- 1-KHI[i, first[i]]
     E0[13, 12, i] <- 0
     E0[13, 13, i] <- 0
     E0[13, 14, i] <- 0
-    E0[13, 15, i] <- KHI[i, f[i]] * ( 1-P0[i] )
+    E0[13, 15, i] <- KHI[i, first[i]] * ( 1-P0[i] )
     E0[13, 16, i] <- 0
     E0[13, 17, i] <- 0
-    E0[13, 18, i] <- KHI[i, f[i]] * P0[i] 
+    E0[13, 18, i] <- KHI[i, first[i]] * P0[i] 
     E0[13, 19, i] <- 0
     
     E0[14, 1, i] <- 0
@@ -1037,18 +1038,20 @@ PA_CR_phenology <- nimbleCode({
     
     # ~~~ b. Regressions on parameters -------------------
     
-    for (t in f[i]:(l[i] - 1)) {
+    for (t in first[i]:(last[i] - 1)) {
       
       # Den entry
-      mu_date_in[i, t] <- tau[1] + 
-        tau[2] * (SpUnk[i] + SpPel[i]) +
-        tau[3] * sea_ice_s[t]
+      mu_date_in[i, t] <- c[1] + 
+        c[2] * (SpUnk[i] + SpPel[i]) +
+        c[3] * sea_ice_s[t] +
+        rho[t]
       
       # Den emergence
-      mu_date_out[i, t] <- kappa[1] + 
-        kappa[2] * DATE_IN[i, t] +
-        kappa[3] * (SpUnk[i] + SpPel[i]) +
-        kappa[4] * sea_ice_s[t]
+      mu_date_out[i, t] <- d[1] + 
+        d[2] * DATE_IN[i, t] +
+        d[3] * (SpUnk[i] + SpPel[i]) +
+        d[4] * sea_ice_s[t] +
+        psi[t]
       
       # Recapture probability
       # All females
@@ -1065,79 +1068,79 @@ PA_CR_phenology <- nimbleCode({
                                omega[t]) * year_not_2020[t] * year_post_1992[t]
       
       # Probability of survival
-      logit(phi[i, t]) <- beta_phi[1] * AGE_2_4[i, t] +
-        beta_phi[2] * (AGE_YOUNG[i, t] + AGE_MIDDLE[i, t]) +
-        beta_phi[3] * AGE_OLD[i, t] +
-        beta_phi[4] * (SpUnk[i] + SpPel[i]) +
-        beta_phi[5] * (AGE_2_4[i, t] + AGE_OLD[i, t]) * sea_ice_s[t] 
+      logit(phi[i, t]) <- h[1] * AGE_2_4[i, t] +
+        h[2] * (AGE_YOUNG[i, t] + AGE_MIDDLE[i, t]) +
+        h[3] * AGE_OLD[i, t] +
+        h[4] * (SpUnk[i] + SpPel[i]) +
+        h[5] * (AGE_2_4[i, t] + AGE_OLD[i, t]) * sea_ice_s[t] 
       
       # Probability of coy survival
-      logit(s01[i, t]) <- beta_s0[1] * AGE_YOUNG_1[i, t] +
-        beta_s0[2] * AGE_MIDDLE_1[i, t] +
-        beta_s0[3] * AGE_OLD_1[i, t] +
-        beta_s0[4] +
-        beta_s0[5] * (SpUnk[i] + SpPel[i]) +
-        beta_s0[6] * sea_ice_s[t] 
+      logit(s01[i, t]) <- f[1] * AGE_YOUNG_1[i, t] +
+        f[2] * AGE_MIDDLE_1[i, t] +
+        f[3] * AGE_OLD_1[i, t] +
+        f[4] +
+        f[5] * (SpUnk[i] + SpPel[i]) +
+        f[6] * sea_ice_s[t] 
       
-      logit(s02[i, t]) <- beta_s0[1] * AGE_YOUNG_1[i, t] +
-        beta_s0[2] * AGE_MIDDLE_1[i, t] +
-        beta_s0[3] * AGE_OLD_1[i, t] +
-        beta_s0[5] * (SpUnk[i] + SpPel[i]) +
-        beta_s0[6] * sea_ice_s[t] 
+      logit(s02[i, t]) <- f[1] * AGE_YOUNG_1[i, t] +
+        f[2] * AGE_MIDDLE_1[i, t] +
+        f[3] * AGE_OLD_1[i, t] +
+        f[5] * (SpUnk[i] + SpPel[i]) +
+        f[6] * sea_ice_s[t] 
       
       # Probability of yearling survival
-      logit(s1[i, t]) <- beta_s1[1] * AGE_YOUNG_2[i, t] +
-        beta_s1[2] * AGE_MIDDLE_2[i, t] +
-        beta_s1[3] * AGE_OLD_2[i, t] +
-        beta_s1[4] * sea_ice_s[t] 
+      logit(s1[i, t]) <- g[1] * AGE_YOUNG_2[i, t] +
+        g[2] * AGE_MIDDLE_2[i, t] +
+        g[3] * AGE_OLD_2[i, t] +
+        g[4] * sea_ice_s[t] 
       
       # Denning probability
-      logit(eta[i, t, 1]) <- beta_eta[1] * AGE_4[i, t] +   # Lone female
-        beta_eta[2] * AGE_YOUNG[i, t] +
-        beta_eta[3] * AGE_MIDDLE[i, t] +
-        beta_eta[4] * AGE_OLD[i, t] +
-        beta_eta[9] * sea_ice_s[t]
+      logit(eta[i, t, 1]) <- e[1] * AGE_4[i, t] +   # Lone female
+        e[2] * AGE_YOUNG[i, t] +
+        e[3] * AGE_MIDDLE[i, t] +
+        e[4] * AGE_OLD[i, t] +
+        e[9] * sea_ice_s[t]
       
-      logit(eta[i, t, 2]) <- beta_eta[2] * AGE_YOUNG[i, t] + # FDA
-        beta_eta[3] * AGE_MIDDLE[i, t] +
-        beta_eta[4] * AGE_OLD[i, t] +
-        beta_eta[5] +
-        beta_eta[9] * sea_ice_s[t]
+      logit(eta[i, t, 2]) <- e[2] * AGE_YOUNG[i, t] + # FDA
+        e[3] * AGE_MIDDLE[i, t] +
+        e[4] * AGE_OLD[i, t] +
+        e[5] +
+        e[9] * sea_ice_s[t]
       
-      logit(eta[i, t, 3]) <- beta_eta[2] * AGE_YOUNG[i, t] + # A0-
-        beta_eta[3] * AGE_MIDDLE[i, t] +
-        beta_eta[4] * AGE_OLD[i, t] +
-        beta_eta[6] +
-        beta_eta[9] * sea_ice_s[t]
+      logit(eta[i, t, 3]) <- e[2] * AGE_YOUNG[i, t] + # A0-
+        e[3] * AGE_MIDDLE[i, t] +
+        e[4] * AGE_OLD[i, t] +
+        e[6] +
+        e[9] * sea_ice_s[t]
       
-      logit(eta[i, t, 4]) <- beta_eta[2] * AGE_YOUNG[i, t] + # A1-
-        beta_eta[3] * AGE_MIDDLE[i, t] +
-        beta_eta[4] * AGE_OLD[i, t] +
-        beta_eta[7] +
-        beta_eta[9] * sea_ice_s[t]
+      logit(eta[i, t, 4]) <- e[2] * AGE_YOUNG[i, t] + # A1-
+        e[3] * AGE_MIDDLE[i, t] +
+        e[4] * AGE_OLD[i, t] +
+        e[7] +
+        e[9] * sea_ice_s[t]
       
-      logit(eta[i, t, 5]) <- beta_eta[2] * AGE_YOUNG[i, t] + # AS
-        beta_eta[3] * AGE_MIDDLE[i, t] +
-        beta_eta[4] * AGE_OLD[i, t] +
-        beta_eta[8] +
-        beta_eta[9] * sea_ice_s[t]
+      logit(eta[i, t, 5]) <- e[2] * AGE_YOUNG[i, t] + # AS
+        e[3] * AGE_MIDDLE[i, t] +
+        e[4] * AGE_OLD[i, t] +
+        e[8] +
+        e[9] * sea_ice_s[t]
       
       # Breeding success
-      logit(beta[i, t]) <- beta_beta[1] * (AGE_4[i, t] + AGE_YOUNG[i, t]) +   
-        beta_beta[2] * AGE_MIDDLE[i, t] +
-        beta_beta[3] * AGE_OLD[i, t] +
-        beta_beta[4] * DOY[i, t] +
-        beta_beta[5] * DATE_OUT[i, t] +
-        beta_beta[6] * sea_ice_s[t]
+      logit(beta[i, t]) <- a[1] * (AGE_4[i, t] + AGE_YOUNG[i, t]) +   
+        a[2] * AGE_MIDDLE[i, t] +
+        a[3] * AGE_OLD[i, t] +
+        a[4] * DOY[i, t] +
+        a[5] * DATE_OUT[i, t] +
+        a[6] * sea_ice_s[t]
       
       # Twinning prob
-      logit(gamma[i, t]) <- beta_gamma[1] * (AGE_4[i, t] + AGE_YOUNG[i, t]) +   
-        beta_gamma[2] * AGE_MIDDLE[i, t] +
-        beta_gamma[3] * AGE_OLD[i, t] +
-        beta_gamma[4] * (AGE_YOUNG[i, t] + AGE_4[i, t]) * DOY[i, t] +
-        beta_gamma[5] * (SpUnk[i] + SpPel[i]) +
-        beta_gamma[6] * DATE_OUT[i, t] +
-        beta_gamma[7] * sea_ice_s[t]
+      logit(gamma[i, t]) <- b[1] * (AGE_4[i, t] + AGE_YOUNG[i, t]) +   
+        b[2] * AGE_MIDDLE[i, t] +
+        b[3] * AGE_OLD[i, t] +
+        b[4] * (AGE_YOUNG[i, t] + AGE_4[i, t]) * DOY[i, t] +
+        b[5] * (SpUnk[i] + SpPel[i]) +
+        b[6] * DATE_OUT[i, t] +
+        b[7] * sea_ice_s[t]
       
       # ~~~ c. S ---------------------------------------------------------------
       
@@ -1639,49 +1642,49 @@ PA_CR_phenology <- nimbleCode({
   
   #-------- State process --------#
   for (k in 1:3) {
-    beta_phi[k] ~ dnorm(0, sd = 1.5)  # survival
+    h[k] ~ dnorm(0, sd = 1.5)  # survival
   }
-  beta_phi[4] ~ dnorm(0, sd = 3)  
-  beta_phi[5] ~ dnorm(0, sd = 3)  
+  h[4] ~ dnorm(0, sd = 3)  
+  h[5] ~ dnorm(0, sd = 3)  
   
   for (k in 1:3) {
-    beta_s0[k] ~ dnorm(0, sd = 1.5)  # CoY survival
+    f[k] ~ dnorm(0, sd = 1.5)  # CoY survival
   }
   for (k in 4:6) {
-    beta_s0[k] ~ dnorm(0, sd = 1.5)  # CoY survival (additive effects)
+    f[k] ~ dnorm(0, sd = 1.5)  # CoY survival (additive effects)
   }
   
   
   for (k in 1:3) {
-    beta_s1[k] ~ dnorm(0, sd = 1.5)  # yearling survival
+    g[k] ~ dnorm(0, sd = 1.5)  # yearling survival
   }
-  beta_s1[4] ~ dnorm(0, sd = 3)
+  g[4] ~ dnorm(0, sd = 3)
   
   # Constraint
-  constraint_s0[1] ~ dconstraint(beta_s1[1] > beta_s0[1])
-  constraint_s0[2] ~ dconstraint(beta_s1[2] > beta_s0[2])
-  constraint_s0[3] ~ dconstraint(beta_s1[3] > beta_s0[3])
+  constraint_s0[1] ~ dconstraint(g[1] > f[1])
+  constraint_s0[2] ~ dconstraint(g[2] > f[2])
+  constraint_s0[3] ~ dconstraint(g[3] > f[3])
   
   for (k in 1:4) {
-    beta_eta[k] ~ dnorm(0, sd = 1.5)  # denning probability (intercepts)
+    e[k] ~ dnorm(0, sd = 1.5)  # denning probability (intercepts)
   }
   for (k in 5:9) {
-    beta_eta[k] ~ dnorm(0, sd = 3)  # denning probability (additive effects)
+    e[k] ~ dnorm(0, sd = 3)  # denning probability (additive effects)
   }
   
   
   for (k in 1:3) {
-    beta_beta[k] ~ dnorm(0, sd = 1.5) # early litter survival (intercepts)
+    a[k] ~ dnorm(0, sd = 1.5) # early litter survival (intercepts)
   }
   for (k in 4:6) {
-    beta_beta[k] ~ dnorm(0, sd = 3) # early litter survival (additive effects)
+    a[k] ~ dnorm(0, sd = 3) # early litter survival (additive effects)
   }
   
   for (k in 1:3) {
-    beta_gamma[k] ~ dnorm(0, sd = 1.5) # litter size (intercepts)
+    b[k] ~ dnorm(0, sd = 1.5) # litter size (intercepts)
   }
   for (k in 4:7) {
-    beta_gamma[k] ~ dnorm(0, sd = 3) # litter size (additive effects)
+    b[k] ~ dnorm(0, sd = 3) # litter size (additive effects)
   }
   
   
@@ -1695,66 +1698,57 @@ PA_CR_phenology <- nimbleCode({
   for (t in 1:(n_occasions-1)) {
     omega[t] ~ dnorm(0, sigma_omega)
   }
-  sigma_omega ~ dunif(0, 15)
+  sigma_omega ~ dexp(1)
   
   
   #----- Model on timing of denning ------#
   for (k in 1:3) {
-    tau[k] ~ dnorm(0, sd = 1.5)    # coefs for date of entry (more informative prior on purpose)
+    c[k] ~ dnorm(0, sd = 1.5)    # coefs for date of entry (more informative prior on purpose)
   }
-  sigma_date_in ~ dunif(0, 5)
+  sigma_day_in ~ dexp(1)
   for (k in 1:4) {
-    kappa[k] ~ dnorm(0, sd = 3)  # coefs for date of emergence
+    d[k] ~ dnorm(0, sd = 3)  # coefs for date of emergence
   }
-  sigma_date_out ~ dunif(0, 5)
+  sigma_day_out ~ dexp(1)
+  
+  # Yearly random effects on the timing of denning 
+  for (t in 1:(n_occasions-1)) {
+    psi[t] ~ dnorm(0, sigma_psi)
+    rho[t] ~ dnorm(0, sigma_rho)
+  }
+  sigma_rho ~ dexp(1)
+  sigma_psi ~ dexp(1)
   
   #------ DOY ------#
   for(k in 1:2) {	
-    beta_doy[k] ~ dnorm(0, sd = 3)
+    j[k] ~ dnorm(0, sd = 3)
   }
-  sigma_doy ~ dunif(0, 5)
+  sigma_doy ~ dexp(1)
   # Yearly random effects on date of recapture
   for (t in 1:(n_occasions-1)) {
     nu[t] ~ dnorm(0, sigma_nu)
   }
-  sigma_nu ~ dunif(0, 15)
+  sigma_nu ~ dexp(1)
   
   
   # +++++++++++++++++++++++++++ model & likelihood +++++++++++++++++++++++++++++
-  
-  # for (i in 1:n_ind) {
-  #   # latent state at first capture
-  #   z[i, f[i]] ~ dcat(S0[1:14])
-  #   y[i, f[i]] ~ dcat(E0[z[i, f[i]], 1:19, i])
-  #   
-  #   for (t in ( f[i]+1 ):l[i]) {
-  #     
-  #     #-------- State process --------#
-  #     # draw z(t) given z(t-1)
-  #     z[i, t] ~ dcat( S[z[i, t-1], 1:14, i, t-1] )
-  #     
-  #     #----- Observation process -----#
-  #     # draw y(t) given z(t)
-  #     y[i, t] ~ dcat( E[z[i, t], 1:19, i, t-1] )
-  #   }
-  # }
   
   for(i in 1:n_ind){
     
     # First capture
     for (k in 1:n_states) {
-      zeta[i, f[i], k] <- S0[k] * E0[k, CH[i, f[i]], i]
+      zeta[i, first[i], k] <- S0[k] * E0[k, CH[i, first[i]], i]
     }
     
     # Subsequent captures
-    for(t in f[i] : (l[i]-1) ){
+    for(t in first[i] : (last[i]-1) ){
       for (k in 1:n_states) {
         zeta[i, (t+1), k] <- inprod(zeta[i, t, 1:n_states],
                                     S[1:n_states, k, i, t]) *
           E[k, CH[i, t+1], i, t]
       }
     }
-    lik[i] <- sum(zeta[i, l[i], 1:n_states]) 
+    lik[i] <- sum(zeta[i, last[i], 1:n_states]) 
     ones[i] ~ dbin(prob = lik[i], size = freq[i])
   }
   
@@ -1762,8 +1756,8 @@ PA_CR_phenology <- nimbleCode({
     
     #------- Model on date of capture --------# 
     
-    mu_doy[index_recaptured_i[k], index_recaptured_t[k]] <- beta_doy[1] + 
-      beta_doy[2] * DATE_OUT[index_recaptured_i[k], index_recaptured_t[k]] +
+    mu_doy[index_recaptured_i[k], index_recaptured_t[k]] <- j[1] + 
+      j[2] * DATE_OUT[index_recaptured_i[k], index_recaptured_t[k]] +
       nu[index_recaptured_t[k]] 
     
     DOY[index_recaptured_i[k], 
@@ -1781,17 +1775,17 @@ PA_CR_phenology <- nimbleCode({
   #----- Model on date of emergence ------#
   
   for (i in 1:n_ind) {
-    for (t in f[i]:(l[i] - 1)) {
+    for (t in first[i]:(last[i] - 1)) {
       
       CENSORED_IN[i, t] ~ dinterval(t = DATE_IN[i, t], c = DATE_IN_BOUNDARY[i, t, ])
-      DATE_IN[i, t] ~ dnorm(mu_date_in[i, t], sd = sigma_date_in)
+      DATE_IN[i, t] ~ dnorm(mu_date_in[i, t], sd = sigma_day_in)
       
       CENSORED_OUT[i, t] ~ dinterval(t = DATE_OUT[i, t], c = DATE_OUT_BOUNDARY[i, t, ])
-      DATE_OUT[i, t] ~ dnorm(mu_date_out[i, t], sd = sigma_date_out)   
+      DATE_OUT[i, t] ~ dnorm(mu_date_out[i, t], sd = sigma_day_out)   
       
       CONSTRAINED_DATA[i, t] ~ dconstraint( 
         (DATE_OUT[i, t] * sd_date_out + mean_date_out) >= (DATE_IN[i, t] * sd_date_in + mean_date_in + 
-                                                            60))
+                                                             60))
     }
   }
 })
@@ -1820,10 +1814,10 @@ MCMC_conf <- configureMCMC(PA_CR_phenology_R,
                            monitors = params,
                            monitors2 = c("DATE_IN", "DATE_OUT"))
 
-MCMC_conf$removeSamplers(c('kappa[1]', 'kappa[2]', 'kappa[3]'))
+MCMC_conf$removeSamplers(c('d[1]', 'd[2]', 'd[3]', 'd[4]'))
 
 # Add block sampler to improve mixing (Automated Factor Slice Sampler https://r-nimble.org/better-block-sampling-in-mcmc-with-the-automated-factor-slice-sampler#bib-turek17)
-MCMC_conf$addSampler(target = c('kappa[1]', 'kappa[2]', 'kappa[3]'), type = 'AF_slice')
+MCMC_conf$addSampler(target = c('d[1]', 'd[2]', 'd[3]', 'd[4]'), type = 'AF_slice')
 
 
 # Compile MCMC
@@ -1833,10 +1827,10 @@ MCMC_C <- compileNimble(MCMC_R, project = PA_CR_phenology_R)
 
 fit_PA_CR_phenology_1 <- runMCMC(mcmc = MCMC_C,
                                  nchains = 1,
-                                 niter = 40000,
-                                 nburnin = 15000,
-                                 thin = 15,
-                                 thin2 = 30,
+                                 niter = 50000,
+                                 nburnin = 20000,
+                                 thin = 20,
+                                 thin2 = 40,
                                  inits = inits())
 
 save(fit_PA_CR_phenology_1,
@@ -1918,37 +1912,37 @@ load("02_outputs/fit_PA_CR_phenology_2.RData")
 
 params.plot <- c()
 for (k in 1:5) {
-  params.plot <- c(params.plot, paste0("beta_phi.", k, "."))
+  params.plot <- c(params.plot, paste0("h.", k, "."))
 }
 for (k in 1:4) {
   params.plot <- c(params.plot, paste0("beta_p.", k, "."))
 }
 # params.plot <- c(params.plot, "sigma_omega") to make estimates with lower values more legible
 for (k in 1:6) {
-  params.plot <- c(params.plot, paste0("beta_s0.", k, "."))
+  params.plot <- c(params.plot, paste0("f.", k, "."))
 }
 for (k in 1:4) {
-  params.plot <- c(params.plot, paste0("beta_s1.", k, "."))
+  params.plot <- c(params.plot, paste0("g.", k, "."))
 }
 for (k in 1:9) {
-  params.plot <- c(params.plot, paste0("beta_eta.", k, "."))
+  params.plot <- c(params.plot, paste0("e.", k, "."))
 }
 for (k in 1:6) {
-  params.plot <- c(params.plot, paste0("beta_beta.", k, "."))
+  params.plot <- c(params.plot, paste0("a.", k, "."))
 }
 for (k in 1:7) {
-  params.plot <- c(params.plot, paste0("beta_gamma.", k, "."))
+  params.plot <- c(params.plot, paste0("b.", k, "."))
 }
 for (k in 1:3) {
-  params.plot <- c(params.plot, paste0("tau.", k, "."))
+  params.plot <- c(params.plot, paste0("c.", k, "."))
 }
-params.plot <- c(params.plot, "sigma_date_in")
+params.plot <- c(params.plot, "sigma_rho", "sigma_day_in")
 for (k in 1:4) {
-  params.plot <- c(params.plot, paste0("kappa.", k, "."))
+  params.plot <- c(params.plot, paste0("d.", k, "."))
 }
-params.plot <- c(params.plot, "sigma_date_out")
+params.plot <- c(params.plot, "sigma_psi", "sigma_day_out")
 for (k in 1:2) {
-  params.plot <- c(params.plot, paste0("beta_doy.", k, "."))
+  params.plot <- c(params.plot, paste0("j.", k, "."))
 }
 params.plot <- c(params.plot, "sigma_doy")
 for (k in 1:3) {

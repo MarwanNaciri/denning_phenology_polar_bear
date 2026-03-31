@@ -312,8 +312,8 @@ sd_date_out <- sd(denning_dates$doy_out, na.rm = T)
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
 load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples,
-             fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1,
+             fit_PA_CR_phenology_2)
 # res <- rbind(fit_PA_CR_phenology_1, 
 #              fit_PA_CR_phenology_2)
 
@@ -440,8 +440,8 @@ sd_date_out <- sd(denning_dates$doy_out, na.rm = T)
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
 load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples,
-             fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1,
+             fit_PA_CR_phenology_2)
 
 
 lengthgrid <- 100
@@ -667,8 +667,8 @@ sea_ice_s <- as.vector(scale(sea_ice))
 
 load("02_outputs/fit_PA_CR_phenology_1.RData")
 load("02_outputs/fit_PA_CR_phenology_2.RData")
-res <- rbind(fit_PA_CR_phenology_1$samples,
-             fit_PA_CR_phenology_2$samples)
+res <- rbind(fit_PA_CR_phenology_1,
+             fit_PA_CR_phenology_2)
 
 lengthgrid <- 100
 grid <- seq(min(sea_ice), max(sea_ice), length = lengthgrid) 
